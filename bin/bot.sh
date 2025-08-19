@@ -1,0 +1,97 @@
+#!/bin/bash
+
+source ../lib/colors.sh
+set -e
+
+if [ -z "$1" ]; then
+  log_msg "Usage:"
+  log_msg "  bot co <branch-description>   # checkout branch from updated main"
+  log_msg "  bot ci -m \"message\"          # update from main, then commit"
+  log_msg "  bot wip -m \"message\"         # update from main, then commit with WIP"
+  exit 1
+fi
+
+COMMAND=$1
+shift
+
+# Detect default branch (usually main/master)
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+if [ -z "$DEFAULT_BRANCH" ]; then
+  log_error "Could not detect default branch."
+  exit 1
+fi
+
+# --- Helpers ---
+normalize_branch_name() {
+  local raw="$*"
+  local ticket=$(echo "$raw" | awk '{print $1}' | tr '[:lower:]' '[:upper:]')
+  local desc=$(echo "$raw" | cut -d' ' -f2- | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+  if [ -z "$desc" ]; then
+    echo "$ticket"
+  else
+    echo "${ticket}_${desc}"
+  fi
+}
+
+get_ticket_from_branch() {
+  local branch=$(git rev-parse --abbrev-ref HEAD)
+  echo "$branch" | awk -F'_' '{print $1}'
+}
+
+update_from_main() {
+  local current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+  log_info "Fetching latest $DEFAULT_BRANCH from origin..."
+  git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
+
+  log_info "Merging $DEFAULT_BRANCH into $current_branch..."
+  git merge $DEFAULT_BRANCH
+}
+
+# --- Subcommands ---
+case "$COMMAND" in
+  ci|wip)
+    if [ "$1" != "-m" ] || [ -z "$2" ]; then
+      log_error "Usage: bot $COMMAND -m \"commit message\""
+      exit 1
+    fi
+    shift # remove -m
+    COMMIT_MSG="$*"
+
+    TICKET=$(get_ticket_from_branch)
+    if [ -z "$TICKET" ]; then
+      log_error "Could not detect ticket from branch name."
+      exit 1
+    fi
+
+    # Always update from main before committing
+    update_from_main
+
+    FINAL_MSG="$TICKET - $COMMIT_MSG"
+    if [ "$COMMAND" = "wip" ]; then
+      FINAL_MSG="$FINAL_MSG -WIP"
+    fi
+
+    git add .
+    git commit -a -m "$FINAL_MSG"
+    log_success "Committed with message: \"$FINAL_MSG\""
+    ;;
+
+  co)
+    if [ -z "$1" ]; then
+      log_error "Usage: bot co <branch-description>"
+      exit 1
+    fi
+    NEW_BRANCH=$(normalize_branch_name "$*")
+
+    log_info "Default branch detected: $DEFAULT_BRANCH"
+    git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
+    git checkout -b $NEW_BRANCH $DEFAULT_BRANCH
+    log_success "Branch '$NEW_BRANCH' created from updated '$DEFAULT_BRANCH' and checked out."
+    ;;
+
+  *)
+    log_error "Unknown command: $COMMAND"
+    exit 1
+    ;;
+esac
