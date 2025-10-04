@@ -13,21 +13,21 @@ MAGENTA="\033[0;35m"
 
 # Functions for colored printing
 log_msg() {
-  echo -e "${RESET}$*${RESET}"
+  echo -e "${RESET}>>> $*${RESET}"
 }
 
 log_error() {
-  echo -e "${BOLD}${RED}❌ $*${RESET}"
+  echo -e "${BOLD}${RED}>>> ❌ $*${RESET}"
 }
 
 log_warn() {
-  echo -e "${YELLOW}⚠️  $*${RESET}"
+  echo -e "${YELLOW}>>> ⚠️  $*${RESET}"
 }
 
 log_info() {
-  echo -e "${BLUE}ℹ️  $*${RESET}"
+  echo -e "${BLUE}>>> ℹ️  $*${RESET}"
 }
 
 log_success() {
-  echo -e "${GREEN}✅ $*${RESET}"
+  echo -e "${GREEN}>>> ✅ $*${RESET}"
 }

@@ -5,11 +5,21 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source ${SCRIPT_DIR}/../lib/colors.sh
 
+MAIN_BRANCH="main"
+DEVELOP_BRANCH="develop"
+PREFERED_STRATEGY="rebase" # pull|rebase
+
 if [ -z "$1" ]; then
   log_msg "Usage:"
   log_msg "  bot co <branch-description>   # checkout branch from updated main"
   log_msg "  bot ci -m \"message\"          # update from main, then commit"
   log_msg "  bot wip -m \"message\"         # update from main, then commit with WIP"
+  log_msg "  bot pull          # update from main, then commit with WIP"
+  log_msg "  bot rebase         # update from main, then commit with WIP"
+  log_msg "  bot squash <amount-of-commits>         # update from main, then commit with WIP"
+  log_msg "  bot amend         # update from main, then commit with WIP"
+  log_msg "  bot rename <new-branch-name>         # update from main, then commit with WIP"
+  log_msg "  bot undo         # update from main, then commit with WIP"
   exit 1
 fi
 
@@ -35,21 +45,62 @@ normalize_branch_name() {
   fi
 }
 
-get_ticket_from_branch() {
-  local branch=$(git rev-parse --abbrev-ref HEAD)
-  echo "$branch" | awk -F'_' '{print $1}'
+get_current_branch(){
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 }
 
+get_ticket_from_branch() {
+  get_current_branch
+  echo "$CURRENT_BRANCH" | awk -F'_' '{print $1}'
+}
+
+
 update_from_main() {
-  local current_branch=$(git rev-parse --abbrev-ref HEAD)
+  get_current_branch
 
   log_info "Fetching latest $DEFAULT_BRANCH from origin..."
   git fetch origin $DEFAULT_BRANCH:$DEFAULT_BRANCH
 
-  log_info "Merging $DEFAULT_BRANCH into $current_branch..."
+  log_info "Merging $DEFAULT_BRANCH into $CURRENT_BRANCH..."
   git merge $DEFAULT_BRANCH
 }
 
+pull_from_remote(){
+  get_current_branch
+
+  local remote_branch=$DEVELOP_BRANCH
+  if[-n $1];then
+    remote_branch=$1
+  fi
+
+  log_info "Pulling latest from '$remote_branch'"
+  git pull origin $remote_branch
+  
+  log_info "Branch '$remote_branch' pulled into '$CURRENT_BRANCH'"
+}
+
+rebase_from_remote(){
+  get_current_branch
+
+  local remote_branch=$DEVELOP_BRANCH
+  if[-n $1];then
+    remote_branch=$1
+  fi
+
+  log_info "Fetching and rebasing from '$remote_branch'"
+  git fetch origin
+  git rebase origin/$remote_branch
+  
+  log_info "Branch '$CURRENT_BRANCH' rebased and up to date with '$remote_branch'"
+}
+
+update_before_actions(){
+  if [ $PREFERED_STRATEGY = "rebase" ]; then
+    rebase_from_remote
+  else
+    pull_from_remote
+  fi
+}
 # --- Subcommands ---
 case "$COMMAND" in
   ci|wip)
@@ -66,8 +117,8 @@ case "$COMMAND" in
       exit 1
     fi
 
-    # Always update from main before committing
-    update_from_main
+    # Always update before committing
+    update_before_actions
 
     FINAL_MSG="$TICKET - $COMMIT_MSG"
     if [ "$COMMAND" = "wip" ]; then
@@ -92,6 +143,33 @@ case "$COMMAND" in
     log_success "Branch '$NEW_BRANCH' created from updated '$DEFAULT_BRANCH' and checked out."
     ;;
 
+  pull)
+    pull_from_remote
+  ;;
+  rebase)
+    rebase_from_remote
+  ;;
+  squash)
+    if [ -z "$1" ]; then
+      log_error "Usage: bot squash <amount-of-commits>"
+      exit 1
+    fi
+    git rebase -i HEAD~$1
+  ;;
+  amend)
+    git add .
+    git ci --amend --no-edit
+  ;;
+  rename)
+    if [ -z "$1" ]; then
+      log_error "Usage: bot rename <new-branch-name>"
+      exit 1
+    fi
+    git branch -m "$1"
+  ;;
+  undo)
+    git reset --mixed HEAD~1
+  ;;
   *)
     log_error "Unknown command: $COMMAND"
     exit 1
