@@ -7,10 +7,19 @@ get_current_branch() {
 }
 
 get_ticket_from_branch() {
-    local br
-    br="$(get_current_branch)"
-    echo "$br" | awk -F'_' '{print $1}'
+    local br="$(get_current_branch)"
+
+    # Get ocurrence in the branch name
+    local ticket=$(echo "$br" | grep -Eo "$TICKET_PATTERN" | head -n 1 || true)
+
+    # Revalidate the pattern
+    if [[ "$ticket" =~ ^$TICKET_PATTERN$ ]]; then
+        echo "$ticket"
+    else
+        echo ""
+    fi
 }
+
 
 normalize_branch_name() {
     local raw="$*"
@@ -27,7 +36,7 @@ normalize_branch_name() {
 
     # Validate ticket format: e.g. ABC-123 or TEAM_456 (configurable pattern)
     if [ "$ENFORCE_TICKET_PATTERN" = true ]; then
-        if ! [[ "$ticket" =~ ^[A-Za-z]{2,10}[-_][0-9]{1,5}$ ]]; then
+        if ! [[ "$ticket" =~ ^$TICKET_PATTERN$ ]]; then
             log_error "Invalid ticket format '$ticket'. Expected pattern like ABC-123 or APP_45."
             exit 1
         fi
