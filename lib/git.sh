@@ -15,11 +15,15 @@ create_commit() {
 
     TICKET="$(get_ticket_from_branch)"
 
-    [ -z "$TICKET" ] && die "Cannot detect ticket prefix from branch."
+    if [[ -z "$TICKET" ]]; then
+        log_warn "Cannot detect ticket prefix from branch."
+    else
+        TICKET="${TICKET} - "
+    fi
 
     update_before_actions
 
-    FINAL_MSG="${TICKET} - ${COMMIT_MSG}"
+    FINAL_MSG="${TICKET}${description}"
     [ "$COMMAND" = "wip" ] && FINAL_MSG="${FINAL_MSG} -WIP"
 
     git add .
@@ -61,7 +65,7 @@ stash_pop() {
 
     if [ "$stashes" -gt 0 ]; then
         log_info "Restoring stashed changes..."
-        if ! git stash pop; then
+        if ! git stash pop --quiet; then
             log_error "Conflicts occurred while popping stash. Resolve manually."
             exit 1
         fi
@@ -77,11 +81,11 @@ pull_from_remote() {
     fi
 
     log_info "Fetching origin/${remote_branch}..."
-    git fetch origin "$remote_branch"
+    git fetch origin "$remote_branch" --quiet
 
     log_info "Merging origin/${remote_branch} into ${current_branch}..."
 
-    git pull --no-rebase origin "$remote_branch" || die "Pull failed. Resolve conflicts manually."
+    git pull --no-rebase origin "$remote_branch" --quiet || die "Pull failed. Resolve conflicts manually."
 
     log_success "Branch '${current_branch}' merged from '${remote_branch}'."
 }
@@ -95,10 +99,10 @@ rebase_from_remote() {
     fi
 
     log_info "Fetching origin/${remote_branch}..."
-    git fetch origin "$remote_branch"
+    git fetch origin "$remote_branch" --quiet
 
     log_info "Rebasing '${current_branch}' onto origin/${remote_branch}..."
-    git rebase origin/"$remote_branch" || die "Rebase failed. Resolve with 'git rebase --continue' or abort."
+    git rebase origin/"$remote_branch" --quiet || die "Rebase failed. Resolve with 'git rebase --continue' or abort."
 
     log_success "Branch '${current_branch}' rebased onto origin/${remote_branch}'."
 }
