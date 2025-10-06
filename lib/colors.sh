@@ -13,7 +13,7 @@ MAGENTA="\033[0;35m"
 
 # Functions for colored printing
 log_msg() {
-  echo -e "${RESET}>>> $*${RESET}"
+  echo -e "${RESET}$*${RESET}"
 }
 
 log_error() {
