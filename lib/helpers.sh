@@ -20,7 +20,6 @@ get_ticket_from_branch() {
     fi
 }
 
-
 normalize_branch_name() {
     local raw="$*"
 
@@ -35,15 +34,7 @@ normalize_branch_name() {
     [ "$desc" = "$raw" ] && desc=""
 
     # Validate ticket format: e.g. ABC-123 or TEAM_456 (configurable pattern)
-    if [ "$ENFORCE_TICKET_PATTERN" = true ]; then
-        if ! [[ "$ticket" =~ ^$TICKET_PATTERN$ ]]; then
-            log_error "Invalid ticket format '$ticket'. Expected pattern like ABC-123 or APP_45."
-            exit 1
-        fi
-        ticket="$(echo "$ticket" | tr '[:lower:]' '[:upper:]')"
-    else
-        ticket="$(echo "$ticket" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | sed -E 's/[^a-z0-9._/-]+/_/g')"
-    fi
+    validate_ticket_pattern "$ticket"
 
     # Clean description:
     # - lowercase
@@ -59,5 +50,13 @@ normalize_branch_name() {
       NEW_BRANCH="$ticket"
     else
       NEW_BRANCH="${ticket}_${desc}"
+    fi
+}
+
+validate_ticket_pattern(){
+    local ticket="$1"
+    if [[ "$ENFORCE_TICKET_PATTERN" == true && ! "$ticket" =~ ^$TICKET_PATTERN ]]; then
+        log_error "Invalid ticket format '$ticket' in the branch name. Expected pattern like ABC-123 or APP_45."
+        exit 1
     fi
 }

@@ -38,9 +38,9 @@ create_branch() {
     log_info "Checking if branch name is unique..."
     git show-ref --verify --quiet "refs/heads/${NEW_BRANCH}" && die "Branch '${NEW_BRANCH}' exists."
 
-    log_info "Creating '${NEW_BRANCH}' from origin/${BASE_BRANCH}..."
+    log_info "Creating '${NEW_BRANCH}' from ${BASE_BRANCH}..."
     git fetch origin "$BASE_BRANCH"
-    git checkout -b "$NEW_BRANCH" "origin/$BASE_BRANCH"
+    git checkout -b "$NEW_BRANCH" "$BASE_BRANCH"
 
     log_success "Branch '${NEW_BRANCH}' created and checked out."
 }
@@ -148,6 +148,10 @@ rename_branch() {
     fi
 
     NEW_NAME="$1"
+
+    # Check if ticket pattern is enforced
+    validate_ticket_pattern "$NEW_NAME"
+
     log_info "Checking if branch name is unique..."
     git show-ref --verify --quiet "refs/heads/${NEW_NAME}" && die "Branch '${NEW_NAME}' exists."
 
