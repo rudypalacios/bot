@@ -1,4 +1,1 @@
-- Test CI
 - Add push honoring strategy
-- Update README
-- Use env variables for config overrides

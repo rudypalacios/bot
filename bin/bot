@@ -19,6 +19,7 @@ usage() {
   log_msg "  bot rename <new-branch>              # rename branch"
   log_msg "  bot undo                             # undo last commit (keep staged)"
   log_msg "  bot status                           # show git status summary"
+  log_msg "  bot help                             # show usage information"
 }
 
 # --- Arg parse ---
@@ -63,9 +64,14 @@ case "$COMMAND" in
     status)
         print_branch_status
         ;;
+    
+    help)
+        usage
+        ;;
 
     *)
-        die "Unknown command: $COMMAND"
+        usage
+        log_error "Unknown command: $COMMAND"
         ;;
 esac
 
